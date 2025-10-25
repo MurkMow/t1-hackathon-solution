@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="top-left">
+      <button id="btnStart" class="btn">Старт</button>
+      <button id="btnStop" class="btn" disabled>Стоп</button>
+      <button id="btnToggleBg" class="btn" aria-pressed="true" title="Горячая клавиша: B">Фон: вкл</button>
+      <button id="btnOpenModal" class="btn-ghost" title="Редактировать данные">Данные</button>
+      <span class="status" style="margin-left:6px">Hotkey: <b>B</b></span>
+    </div>
+    <div class="top-right">
+      <span id="fps" class="chip">FPS: —</span>
+      <span id="status" class="status">Готово</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="video-card">
+      <div class="video-inner">
+        <canvas id="canvasResult" width="640" height="480"></canvas>
+
+        <div class="overlay-top" id="overlayTop" hidden>
+          <div class="brand-left">
+            <img id="brandLogo" alt="Логотип">
+            <div class="brand-name" id="brandName">Компания</div>
+          </div>
+          <div class="qr-right" id="qrRight" hidden>
+            <div class="qr-box"><div id="qrTarget"></div></div>
+            <div class="qr-label" id="qrText">Telegram</div>
+          </div>
+        </div>
+
+        <div class="overlay-bottom" id="overlayBottom" hidden>
+          <div class="info-line" id="lnFullName">
+            <span class="info-label">ФИО</span><span class="info-value" id="valFullName"></span>
+          </div>
+          <div class="info-line" id="lnPosition">
+            <span class="info-label">Должность</span><span class="info-value" id="valPosition"></span>
+          </div>
+          <div class="info-line" id="lnCompany">
+            <span class="info-label">Компания</span><span class="info-value" id="valCompany"></span>
+          </div>
+          <div class="info-line" id="lnDept">
+            <span class="info-label">Подразделение</span><span class="info-value" id="valDept"></span>
+          </div>
+          <div class="info-line" id="lnOffice">
+            <span class="info-label">Офис</span><span class="info-value" id="valOffice"></span>
+          </div>
+          <div class="info-line" id="lnEmail">
+            <span class="info-label">Email</span><span class="info-value" id="valEmail"></span>
+          </div>
+          <div class="info-line" id="lnTg">
+            <span class="info-label">Telegram</span><span class="info-value" id="valTg"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="side">
+      <div class="card">
+        <h3>Фон</h3>
+        <div class="row">
+          <label>Пресет</label>
+          <select id="bgPreset">
+            <option value="">—</option>
+            <option value="business">Деловой</option>
+            <option value="solid">Однотонный</option>
+            <option value="chill">Расслабленный</option>
+            <option value="space">Космический</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>Файл</label>
+          <div class="file-wrap">
+            <button type="button" class="btn file-btn">Выбрать изображение</button>
+            <input type="file" id="bgFile" accept="image/*" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>AI-фон</h3>
+        <div class="row">
+          <label>AI запрос</label>
+          <input id="aiPrompt" type="text" placeholder="офис в стиле лофта, мягкий свет, bokeh">
+        </div>
+        <div class="row">
+          <label>Стиль</label>
+          <select id="aiStyle">
+            <option value="">нейтральный</option>
+            <option>cinematic</option>
+            <option>photorealistic</option>
+            <option>minimalist</option>
+            <option>corporate</option>
+            <option>futuristic</option>
+          </select>
+        </div>
+        <div class="row">
+          <label></label>
+          <button id="btnGenBg" class="btn btn-accent">Сгенерировать фон</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Освещение</h3>
+        <div class="row">
+          <label>Осветление</label>
+          <input id="lightBoost" class="range" type="range" min="1.0" max="1.8" step="0.01" value="1.32">
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Уровень данных</h3>
+        <div class="row">
+          <label>Уровень</label>
+          <select id="privacySelect">
+            <option value="low">low — минимум</option>
+            <option value="medium" selected>medium — средне</option>
+            <option value="high">high — максимум + QR</option>
+          </select>
+        </div>
+        <div class="row">
+          <label>Данные</label>
+          <button id="btnToggleData" class="btn">Скрыть</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="dataModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h3 id="modalTitle">Данные сотрудника</h3>
+        <button id="btnCloseModal" class="btn-ghost" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid" id="form">
+          <div class="form-row"><label for="in_fullName">ФИО</label><input id="in_fullName" placeholder="Имя Фамилия"></div>
+          <div class="form-row"><label for="in_position">Должность</label><input id="in_position" placeholder="Инженер-программист"></div>
+          <div class="form-row"><label for="in_company">Компания</label><input id="in_company" placeholder="ООО «Пример»"></div>
+          <div class="form-row"><label for="in_department">Подразделение</label><input id="in_department" placeholder="Отдел разработки"></div>
+          <div class="form-row"><label for="in_office">Офис</label><input id="in_office" placeholder="Москва / Воронеж / ..."></div>
+          <div class="form-row"><label for="in_email">Email</label><input id="in_email" placeholder="name@company.com"></div>
+          <div class="form-row"><label for="in_telegram">Telegram</label><input id="in_telegram" placeholder="@nickname"></div>
+          <div class="form-row"><label for="in_logo">Логотип (URL)</label><input id="in_logo" placeholder="https://.../logo.png"></div>
+          <div class="hint">QR показывается только на уровне high</div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="btnCloseModal2" class="btn">Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js" defer></script>
+</body>
+</html>
